@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://treymcgonnell.github.io/protocol/frame.schema.json",
+  "title": "trey-lm stream event",
+  "description": "One server-sent event from POST /api/chat, or one entry of a recorded replay. Schema version 1.",
+  "type": "object",
+  "required": ["event", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "event": { "enum": ["meta", "status", "retrieval", "prompt", "prefill", "token", "done", "error"] },
+    "t": { "type": "number", "minimum": 0, "description": "Milliseconds since the request started (replays only)." },
+    "data": { "type": "object" }
+  },
+  "allOf": [
+    { "if": { "properties": { "event": { "const": "meta" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/meta" } } } },
+    { "if": { "properties": { "event": { "const": "status" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/status" } } } },
+    { "if": { "properties": { "event": { "const": "retrieval" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/retrieval" } } } },
+    { "if": { "properties": { "event": { "const": "prompt" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/prompt" } } } },
+    { "if": { "properties": { "event": { "const": "prefill" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/prefill" } } } },
+    { "if": { "properties": { "event": { "const": "token" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/token" } } } },
+    { "if": { "properties": { "event": { "const": "done" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/done" } } } },
+    { "if": { "properties": { "event": { "const": "error" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/error" } } } }
+  ],
+  "$defs": {
+    "source": { "type": "string", "minLength": 1, "description": "rules | bio | question | answer | note:<file>" },
+    "meta": {
+      "type": "object",
+      "required": ["v", "model", "layers", "hidden", "mlp", "vocab", "temperature", "neurons_per_layer", "lens_layers"],
+      "additionalProperties": false,
+      "properties": {
+        "v": { "const": 1 },
+        "model": { "type": "string" },
+        "layers": { "type": "integer", "minimum": 1 },
+        "hidden": { "type": "integer", "minimum": 1 },
+        "mlp": { "type": "integer", "minimum": 1 },
+        "vocab": { "type": "integer", "minimum": 1 },
+        "temperature": { "type": "number", "minimum": 0 },
+        "neurons_per_layer": { "type": "integer", "minimum": 1 },
+        "lens_layers": { "type": "array", "items": { "type": "integer", "minimum": 1 }, "minItems": 1 }
+      }
+    },
+    "status": {
+      "type": "object",
+      "required": ["phase", "elapsed_ms"],
+      "additionalProperties": false,
+      "properties": {
+        "phase": { "enum": ["queued", "waking", "retrieving", "prefill", "generating", "done"] },
+        "elapsed_ms": { "type": "number", "minimum": 0 },
+        "queue_pos": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "retrieval": {
+      "type": "object",
+      "required": ["results"],
+      "additionalProperties": false,
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["file", "title", "score", "used", "snippet", "highlights"],
+            "additionalProperties": false,
+            "properties": {
+              "file": { "type": "string" },
+              "title": { "type": "string" },
+              "score": { "type": "number", "minimum": 0, "maximum": 1 },
+              "used": { "type": "boolean" },
+              "snippet": { "type": "string" },
+              "highlights": {
+                "type": "array",
+                "items": { "type": "array", "items": { "type": "integer", "minimum": 0 }, "minItems": 2, "maxItems": 2 }
+              }
+            }
+          }
+        },
+        "error": { "type": "string" }
+      }
+    },
+    "prompt": {
+      "type": "object",
+      "required": ["sections", "total"],
+      "additionalProperties": false,
+      "properties": {
+        "sections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["kind", "label", "source", "tokens", "start"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "enum": ["rules", "bio", "note", "question"] },
+              "label": { "type": "string" },
+              "source": { "$ref": "#/$defs/source" },
+              "tokens": { "type": "integer", "minimum": 0 },
+              "start": { "type": "integer", "minimum": 0 },
+              "sample": { "type": "array", "items": { "type": "string" }, "maxItems": 12 }
+            }
+          }
+        },
+        "total": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "prefill": {
+      "type": "object",
+      "required": ["ms", "tokens"],
+      "additionalProperties": false,
+      "properties": {
+        "ms": { "type": "number", "minimum": 0 },
+        "tokens": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "token": {
+      "type": "object",
+      "required": ["i", "id", "text", "p", "topk", "neurons", "top_neuron", "attention", "looking_at", "logit_lens"],
+      "additionalProperties": false,
+      "properties": {
+        "i": { "type": "integer", "minimum": 0 },
+        "id": { "type": "integer", "minimum": 0 },
+        "text": { "type": "string" },
+        "p": { "type": "number", "minimum": 0, "maximum": 1 },
+        "topk": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "required": ["text", "p"],
+            "additionalProperties": false,
+            "properties": { "text": { "type": "string" }, "p": { "type": "number", "minimum": 0, "maximum": 1 } }
+          }
+        },
+        "neurons": { "type": "string", "description": "base64 of layers x neurons_per_layer bytes, row-major by layer, 0..255" },
+        "top_neuron": {
+          "type": "object",
+          "required": ["layer", "index", "row"],
+          "additionalProperties": false,
+          "properties": {
+            "layer": { "type": "integer", "minimum": 1 },
+            "index": { "type": "integer", "minimum": 0 },
+            "row": { "type": ["integer", "null"], "minimum": 0, "description": "Window row in the displayed set, or null if the top neuron is not one of the displayed 14" },
+            "label": { "type": "string" }
+          }
+        },
+        "attention": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "required": ["text", "src", "w"],
+            "additionalProperties": false,
+            "properties": {
+              "text": { "type": "string" },
+              "src": { "$ref": "#/$defs/source" },
+              "w": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "looking_at": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["src", "w"],
+            "additionalProperties": false,
+            "properties": { "src": { "$ref": "#/$defs/source" }, "w": { "type": "number", "minimum": 0, "maximum": 1 } }
+          }
+        },
+        "logit_lens": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["layer", "text"],
+            "additionalProperties": false,
+            "properties": { "layer": { "type": "integer", "minimum": 1 }, "text": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "done": {
+      "type": "object",
+      "required": ["tokens", "ms", "sources"],
+      "additionalProperties": false,
+      "properties": {
+        "tokens": { "type": "integer", "minimum": 0 },
+        "ms": { "type": "number", "minimum": 0 },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["src", "share"],
+            "additionalProperties": false,
+            "properties": { "src": { "$ref": "#/$defs/source" }, "share": { "type": "number", "minimum": 0, "maximum": 1 } }
+          }
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "enum": ["rate_limited", "chat_disabled", "model_error", "bad_input", "busy", "blocked"] },
+        "message": { "type": "string" },
+        "retry_after": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

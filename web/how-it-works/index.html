@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>How this works · trey-lm</title>
+<meta name="description" content="How trey-lm works: Llama 3.2 3B, Supermemory, and a live picture of neurons, attention and next-word odds.">
+<link rel="canonical" href="https://treymcgonnell.github.io/how-it-works/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="How this works · trey-lm">
+<meta property="og:description" content="How trey-lm works: Llama 3.2 3B, Supermemory, and a live picture of neurons, attention and next-word odds.">
+<meta property="og:url" content="https://treymcgonnell.github.io/how-it-works/">
+<meta property="og:image" content="https://treymcgonnell.github.io/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0F1630">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Martian+Mono:wdth,wght@75..112.5,100..800&display=swap" media="print" data-fonts>
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Martian+Mono:wdth,wght@75..112.5,100..800&display=swap"></noscript>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<canvas id="scene" aria-hidden="true"></canvas>
+<div class="page">
+<header class="page-top">
+  <a class="brand" href="/">Trey McGonnell</a>
+  <nav class="nav" aria-label="Main">
+    <a href="/projects/">Projects</a>
+    <a href="/resume/">Resume</a>
+    <a href="/how-it-works/" aria-current="page">How this works</a>
+    <a href="https://github.com/TreyMcGonnell">GitHub</a>
+  </nav>
+</header>
+<main id="main" class="page-main">
+<article class="panel">
+<h1>How this works</h1>
+<p class="lede">The chat on the home page is a real language model, and the picture beside it is drawn from what happens inside it while it writes. Nothing in the picture is decoration.</p>
+
+<h2>The parts</h2>
+<div class="arch" role="list">
+  <div class="box" role="listitem"><b>This website</b><span>Static pages on GitHub Pages. Draws the city, the towers and the chat.</span></div>
+  <div class="arrow" aria-hidden="true">→</div>
+  <div class="box" role="listitem"><b>A small server</b><span>Checks limits, searches Trey's notes with Supermemory, and splits text into tokens.</span></div>
+  <div class="arrow" aria-hidden="true">→</div>
+  <div class="box" role="listitem"><b>The model</b><span>Llama 3.2 3B Instruct on a cloud GPU (Modal). It sleeps when nobody is asking, so the first question wakes it.</span></div>
+</div>
+
+<h2>How one answer is made</h2>
+<ol class="steps-list">
+  <li><b>Your question becomes tokens.</b> Models read pieces of words, not letters. Each token becomes a list of 3,072 numbers.</li>
+  <li><b>Supermemory searches Trey's notes.</b> The best-matching notes, at most three, are pasted into the prompt along with a short bio and a few rules. The model only knows about Trey what is in that prompt.</li>
+  <li><b>The model reads the whole prompt at once.</b> All of it passes through 28 layers in a single step, usually in well under a second. The page slows that step down so you can see it.</li>
+  <li><b>It writes one token at a time.</b> For each one it computes odds for every token it knows (128,256 of them), then picks one at random in proportion to those odds, at temperature 0.7. The top five are what you see as bars.</li>
+</ol>
+
+<h2>Reading the picture</h2>
+<h3>Towers and windows</h3>
+<p>Each of the 28 towers is one layer of the model. Each window is one neuron: a single number inside the layer's feed-forward block. A layer has 8,192 of them; the page shows the same 14 per layer every time, picked in advance because they are often among the most active. Brightness shows how strongly a neuron is firing compared to its usual range.</p>
+<div class="swatches" aria-label="Window colors">
+  <span><i style="background:rgb(34,44,82)"></i>quiet</span>
+  <span><i style="background:rgb(116,84,120)"></i>a little</span>
+  <span><i style="background:#FFB547"></i>firing</span>
+  <span><i style="background:rgb(255,240,200)"></i>very strongly</span>
+</div>
+<p>The callout names the strongest of those windows. Its description ("lights up for words like …") is generated automatically from the words that excited that neuron most during testing, so treat it as a hint, not a definition.</p>
+<h3>Where it's looking</h3>
+<p>Attention is how a token pulls information from earlier tokens. The page averages attention from the newest token over all heads in layers 20 to 27 and groups it by part of the prompt: the rules, the bio, each note from Supermemory, your question, and its own answer so far. This is a strong hint about which source a word came from, not proof.</p>
+<h3>What each layer would have said</h3>
+<p>The "logit lens" runs the model's final step on earlier layers (4, 10, 16 and 22) to see what word they would have picked. Early guesses are often odd; they sharpen as the layers go on.</p>
+<h3>The replay</h3>
+<p>The replay on the home page is a recorded answer from this same model and the same notes, saved frame by frame. It plays while the model wakes up. Its timing is slowed into a 20-second story; the numbers in it are real.</p>
+
+<h2>Privacy and limits</h2>
+<p>Questions and answers are kept for 30 days to check quality, then deleted. IP addresses are never stored: rate limits use a salted hash that changes daily. Each visitor can ask 10 questions per 10 minutes and 60 per day, and the site has a daily total so it stays affordable.</p>
+<p>The model can be wrong. It is told to answer only from Trey's notes and to say when it doesn't know, but a 3-billion-parameter model sometimes slips.</p>
+
+<h2>Built with Llama</h2>
+<p>This site uses Llama 3.2 3B Instruct. Llama 3.2 is licensed under the Llama 3.2 Community License, Copyright © Meta Platforms, Inc. All Rights Reserved.</p>
+</article>
+</main>
+<footer class="page-foot"><p class="built-with">Built with Llama · <a href="/how-it-works/">How this works</a></p></footer>
+</div>
+<script type="module" src="/src/pages/main.ts"></script>
+</body>
+</html>

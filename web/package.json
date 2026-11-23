@@ -1,0 +1,29 @@
+{
+  "name": "trey-lm-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "check:size": "node scripts/check-size.mjs",
+    "check:hygiene": "node scripts/check-hygiene.mjs",
+    "check:content": "node scripts/check-content.mjs",
+    "check:links": "node scripts/check-links.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.65.1",
+    "@types/node": "22.10.2",
+    "ajv": "8.20.0",
+    "happy-dom": "21.0.4",
+    "marked": "15.0.4",
+    "typescript": "5.7.2",
+    "vite": "6.4.6",
+    "vitest": "4.1.12"
+  }
+}

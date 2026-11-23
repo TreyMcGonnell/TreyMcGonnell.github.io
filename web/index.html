@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trey McGonnell · trey-lm</title>
+<meta name="description" content="Trey McGonnell, data science at Northern Kentucky University. Ask the 3B language model in the corner anything and watch how it picks every word.">
+<link rel="canonical" href="https://treymcgonnell.github.io/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Trey McGonnell · trey-lm">
+<meta property="og:description" content="Ask a 3B language model about Trey and watch it think: neurons, attention, and the words it almost said.">
+<meta property="og:url" content="https://treymcgonnell.github.io/">
+<meta property="og:image" content="https://treymcgonnell.github.io/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0F1630">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Martian+Mono:wdth,wght@75..112.5,100..800&display=swap" media="print" data-fonts>
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Martian+Mono:wdth,wght@75..112.5,100..800&display=swap"></noscript>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Person","name":"Trey McGonnell","url":"https://treymcgonnell.github.io/","affiliation":{"@type":"CollegeOrUniversity","name":"Northern Kentucky University"},"sameAs":["https://github.com/TreyMcGonnell"]}</script>
+</head>
+<body class="page-home">
+<a class="skip" href="#chat-input">Skip to the chat</a>
+<canvas id="scene" aria-hidden="true"></canvas>
+
+<div class="frame frame-left">
+  <header class="hero">
+    <h1><span>Trey</span><span>McGonnell</span></h1>
+    <p class="role">Data science at Northern Kentucky University</p>
+    <p class="blurb">The chat in the corner is a 3-billion-parameter language model that reads my notes before it answers. Watch each word get made: which neurons fire, and the words it almost said.</p>
+    <div class="pills">
+      <a class="pill pill-primary" href="/resume/">Resume</a>
+      <a class="pill" href="/projects/">Projects</a>
+      <a class="pill" href="https://github.com/TreyMcGonnell">GitHub</a>
+    </div>
+  </header>
+  <p class="built-with home-built">Built with Llama · <a href="/how-it-works/">How this works</a></p>
+</div>
+
+<div class="frame frame-right">
+  <nav class="nav home-nav" aria-label="Main">
+    <a href="/projects/">Projects</a>
+    <a href="/resume/">Resume</a>
+    <a href="/how-it-works/">How this works</a>
+    <a href="https://github.com/TreyMcGonnell">GitHub</a>
+  </nav>
+
+  <main>
+    <section id="stage" class="stage glass is-landing" aria-label="Model visualizer">
+      <div class="stage-head"><h2 id="stage-title">Ask a question. Watch it think.</h2><p id="stage-sub">A 3-billion-parameter model, 28 layers drawn as towers. Each window is a neuron.</p></div>
+      <div class="stage-legend" aria-hidden="true"><span>Quiet</span><span class="bar"></span><span>Firing</span></div>
+      <div class="stage-tools"><button id="text-toggle" class="ghost-btn" type="button" aria-pressed="false" aria-controls="stage-text">Show as text</button></div>
+      <div id="stage-body" class="stage-body"></div>
+      <div id="stage-text" class="stage-textview" hidden></div>
+      <div id="replay-bar" class="replay-bar">
+        <div class="row1"><span class="replay-badge">Replay</span><span class="q">Loading a recorded answer…</span><span class="time"></span><span class="spacer"></span>
+          <button class="icon-btn" type="button" data-action="toggle-replay" aria-label="Pause the replay"></button>
+          <button class="text-btn" type="button" data-action="ask-own">Ask your own</button></div>
+        <p class="narration" aria-live="off">A real answer from this model, recorded with the same notes.</p>
+        <div class="replay-progress" aria-hidden="true"><span><i></i></span><span><i></i></span><span><i></i></span><span><i></i></span></div>
+      </div>
+    </section>
+
+    <aside id="term" class="term glass" aria-label="Chat with trey-lm">
+      <div class="term-head"><span class="name mono">trey-lm</span><span id="term-status" class="status" data-state="waking" role="status">Waking up</span></div>
+      <div id="warm-bar" class="warm-bar" aria-hidden="true"><i style="width: 0%"></i></div>
+      <div id="term-log" class="term-log" tabindex="0" aria-label="Conversation">
+        <p class="msg-bot" id="greeting">Hi, I'm Trey's model. Ask about his projects, school, or how I work.</p>
+        <div id="term-chips" class="term-chips" role="group" aria-label="Suggested questions">
+          <button type="button">What has Trey built?</button>
+          <button type="button">What is Trey studying?</button>
+          <button type="button">How do you pick a word?</button>
+        </div>
+      </div>
+      <div class="term-foot">
+        <form id="chat-form" class="term-form" autocomplete="off">
+          <label class="sr-only" for="chat-input">Ask trey-lm a question</label>
+          <span class="prompt mono" aria-hidden="true">›</span>
+          <input id="chat-input" name="q" maxlength="300" placeholder="Ask something…" enterkeyhint="send">
+          <button id="chat-stop" class="stop" type="button" hidden>Stop</button>
+        </form>
+        <div class="term-meta"><span id="chat-hint">Enter to send</span><span id="chat-count"></span></div>
+      </div>
+      <p id="answer-live" class="sr-only" aria-live="polite"></p>
+    </aside>
+  </main>
+</div>
+
+<svg id="fly-layer" class="fly-layer" aria-hidden="true"></svg>
+<script type="module" src="/src/home/main.ts"></script>
+</body>
+</html>
