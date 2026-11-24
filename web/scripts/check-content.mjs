@@ -17,7 +17,7 @@ function* walk(dir) {
 
 const problems = [];
 for (const file of walk(dist)) {
-  const text = readFileSync(file, 'utf8').replace(/<script[\s\S]*?<\/script>/g, '').replace(/placeholder="[^"]*"/g, '');
+  const text = readFileSync(file, 'utf8').replace(/<(script|style)[\s\S]*?<\/(script|style)>/g, '').replace(/placeholder="[^"]*"/g, '');
   for (const re of PATTERNS) {
     const m = text.match(re);
     if (m) problems.push(`${file.slice(dist.length + 1)}: “${text.slice(Math.max(0, m.index - 30), m.index + 40).replace(/\s+/g, ' ')}”`);

@@ -131,6 +131,14 @@ class LocalRetriever:
         return list(best.values())
 
 
+def _doc_name(doc: dict) -> str:
+    """A readable name for a document added by hand: its title, or the `title:` line of pasted frontmatter."""
+    title = (doc.get("title") or "").strip()
+    m = re.search(r"^title:\s*(.+)$", title, flags=re.M)
+    name = (m.group(1) if m else title.splitlines()[0] if title else "").strip().strip("-").strip()
+    return name[:60]
+
+
 class SupermemoryRetriever:
     """Supermemory v5 search over the trey-lm namespace, in "chunks" mode so passages are Trey's own words
     (not summaries). Chunks are grouped back into one passage per file, best match first."""
@@ -144,15 +152,18 @@ class SupermemoryRetriever:
 
     def search(self, query: str, limit: int) -> list[Passage]:
         r = self.client.post(f"/ns/{self.namespace}/search",
-                             json={"query": query, "limit": limit * 3, "searchMode": "chunks", "threshold": 0})
+                             json={"query": query, "limit": limit * 3, "searchMode": "chunks", "threshold": 0,
+                                   "include": {"documents": True}})
         r.raise_for_status()
         by_file: dict[str, Passage] = {}
         for item in r.json().get("results", []):
             text = item.get("chunk") or ""
             if not isinstance(text, str) or not text.strip():
                 continue
-            meta = item.get("metadata") or ((item.get("included") or {}).get("document") or {}).get("metadata") or {}
-            file = meta.get("file") or item.get("id", "note")
+            doc = (item.get("included") or {}).get("document") or {}
+            meta = item.get("metadata") or doc.get("metadata") or {}
+            # synced files carry their path; documents added by hand in the Supermemory app are named by their title
+            file = meta.get("file") or _doc_name(doc) or item.get("id", "note")
             score = float(item.get("similarity", 0.0))
             if file not in by_file:
                 by_file[file] = Passage(file=file, title=meta.get("title") or file, text=text.strip(), score=score)

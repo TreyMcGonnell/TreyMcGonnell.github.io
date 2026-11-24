@@ -8,7 +8,7 @@ import { createScene } from '../scene/skyline.js';
 import { FrameBuffer } from '../viz/buffer';
 import { flyWord } from '../viz/fly';
 import * as V from '../viz/views';
-import { warmupProgress } from '../viz/warmup';
+import { cityBoot, warmupProgress } from '../viz/warmup';
 import { answerText, emptyAnswer, reduce, sourceLabel, type AnswerState } from './answer';
 import { Asker } from './asker';
 
@@ -92,7 +92,22 @@ export function startHome() {
     if (key === lastLinkText) return;
     lastLinkText = key;
     term.setLink(state, secs, p);
-    if (state === 'waking') scene.setProgress(p);
+  }
+
+  // The city boots on every visit: it follows the real warm-up while the model wakes, and when the model is
+  // already awake it still plays a short boot so every visitor sees the lights come on.
+  let cityReadySince: number | null = null;
+  let cityStartP = 0;
+  let cityP = -1;
+  let cityDone = false;
+  function updateCity() {
+    if (cityDone) return;
+    const elapsed = performance.now() - t0;
+    const settled = gpuReady || link === 'down' || !chatEnabled; // nothing left to wait for
+    if (settled && cityReadySince === null) { cityReadySince = elapsed; cityStartP = Math.max(0, cityP); }
+    const { p, done } = cityBoot(elapsed, cityReadySince, cityStartP, reduceMotion);
+    if (p !== cityP) { cityP = p; scene.setProgress(Math.min(p, 0.999)); }
+    if (done) { cityDone = true; scene.setReady(); }
   }
 
   async function poll() {
@@ -102,14 +117,12 @@ export function startHome() {
       link = 'up';
       if (h.schema_v !== SCHEMA_V) chatEnabled = false; // a frontend/backend version mismatch falls back to the replay (B1)
       else chatEnabled = h.chat_enabled;
-      if (h.gpu_ready) { gpuReady = true; everReady = true; scene.setReady(); } else gpuReady = false;
+      if (h.gpu_ready) { gpuReady = true; everReady = true; } else gpuReady = false;
       if (gpuReady || !chatEnabled) next = 30_000; // keep checking for the kill switch (J4)
     } catch {
       link = 'down';
-      scene.setReady(); // the city lights up anyway; the replay carries the page
       next = 10_000;
     }
-    if (!chatEnabled) scene.setReady();
     if (link === 'down' && asker.waitingFor) { asker.cancel(); offline(); }
     if (!chatEnabled && asker.waitingFor) { asker.cancel(); disabledFallback(); }
     asker.poke();
@@ -469,7 +482,7 @@ export function startHome() {
         break;
       case 'prefill':
         L.sweepStart = performance.now();
-        gpuReady = true; everReady = true; scene.setReady();
+        gpuReady = true; everReady = true;
         break;
       case 'token':
         if (L.sweepStart !== null && performance.now() - L.sweepStart >= SWEEP_MS) L.buf.push(e.data);
@@ -547,6 +560,7 @@ export function startHome() {
   // ---------------------------------------------------------------- loop
   function frame() {
     updateLink();
+    updateCity();
     if (mode === 'replay' && player) player.tick();
     if (live && live.pending.length && live.sweepStart !== null && performance.now() - live.sweepStart >= SWEEP_MS) {
       live.pending.forEach((f) => live!.buf.push(f));

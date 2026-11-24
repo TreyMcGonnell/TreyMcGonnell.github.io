@@ -117,8 +117,9 @@ design/    the skyline generator and design tools
 
 - [x] Model, visualizer, replay, chat and content pages built and tested
 - [x] API live on Modal, notes in Supermemory
-- [ ] Swap the sample content for my real bio, projects and resume
-- [ ] Re-record the replay with the real notes, then launch
+- [x] Swap the sample content for my real bio, projects and resume
+- [x] Re-record the replay with the real notes
+- [ ] Upload the notes to Supermemory and launch
 - [ ] Later: fine-tune the model's voice, and better neuron labels
 
 ---

@@ -35,3 +35,12 @@ def test_only_notes_close_to_the_best_match_are_used():
     found = retrieve(r, "What clubs is Trey in?", limit=4, use=3, threshold=0.15, timeout_s=2)
     assert [(x["file"], x["used"]) for x in found.results] == [
         ("notes/clubs.md", True), ("notes/youtube.md", False), ("projects/trey-lm.md", False)]
+
+
+def test_hand_added_documents_are_named_by_their_title():
+    def handler(request):
+        return httpx.Response(200, json={"results": [{
+            "id": "e817dfb32e065658", "chunk": "Trey leads the robotics club.", "similarity": 0.7, "metadata": {},
+            "included": {"document": {"id": "3cZcq6bVez", "title": "---\ntitle: Robotics club notes\n---\nTrey leads"}}}]})
+    r = SupermemoryRetriever("k", "https://api.supermemory.ai", "trey-lm", transport=httpx.MockTransport(handler))
+    assert [p.file for p in r.search("clubs", 4)] == ["Robotics club notes"]

@@ -8,7 +8,7 @@ import { emptyAnswer, reduce } from '../../src/home/answer';
 import { ReplayPlayer, scheduleReplay } from '../../src/replay/player';
 import { FrameBuffer } from '../../src/viz/buffer';
 import { heat } from '../../src/viz/heat';
-import { warmupProgress } from '../../src/viz/warmup';
+import { cityBoot, FINISH_MS, MIN_BOOT_MS, warmupProgress } from '../../src/viz/warmup';
 import { replay, stream, tokenFrame, toSSE } from '../fixtures/frames';
 
 const schema = JSON.parse(readFileSync(resolve(__dirname, '../../../protocol/frame.schema.json'), 'utf8'));
@@ -164,5 +164,37 @@ describe('answer state', () => {
     expect(s.wakeMs).toBe(1200);
     expect(s.tokens.length).toBe(2);
     expect(s.done?.tokens).toBe(2);
+  });
+});
+
+describe('city boot on every visit', () => {
+  it('plays a full boot even when the model is already awake', () => {
+    const at = (ms: number) => cityBoot(ms, 200, 0);
+    expect(at(200).p).toBeCloseTo(0);
+    expect(at(1800).p).toBeGreaterThan(0.3);
+    expect(at(1800).p).toBeLessThan(0.7);
+    expect(at(MIN_BOOT_MS - 1).done).toBe(false);
+    expect(at(MIN_BOOT_MS)).toEqual({ p: 1, done: true });
+  });
+
+  it('follows the warm-up while the model wakes, then fills the rest in smoothly', () => {
+    expect(cityBoot(10_000, null, 0)).toEqual({ p: warmupProgress(10_000, false), done: false });
+    const start = warmupProgress(22_000, false);
+    expect(cityBoot(22_000, 22_000, start).p).toBeCloseTo(start);
+    expect(cityBoot(22_000 + FINISH_MS / 2, 22_000, start).p).toBeGreaterThan(start);
+    expect(cityBoot(22_000 + FINISH_MS, 22_000, start)).toEqual({ p: 1, done: true });
+  });
+
+  it('never goes backwards', () => {
+    let last = -1;
+    for (let ms = 300; ms <= MIN_BOOT_MS; ms += 50) {
+      const { p } = cityBoot(ms, 300, 0.01);
+      expect(p).toBeGreaterThanOrEqual(last);
+      last = p;
+    }
+  });
+
+  it('switches straight on with reduced motion', () => {
+    expect(cityBoot(300, 300, 0, true)).toEqual({ p: 1, done: true });
   });
 });
