@@ -185,7 +185,7 @@ html, body { height: 100%; overflow: hidden; }
 /* error panel */
 .stage-error { left: 32px; right: 32px; top: 160px; text-align: center; }
 .stage-error h3 { margin: 0; font-size: 24px; font-weight: 700; font-stretch: 75%; }
-.stage-error p { margin: 10px auto 0; max-width: 520px; font-size: 15px; color: var(--ink-2); }
+.stage-error p { margin: 10px auto 0; max-width: 520px; font-size: 15px; line-height: 1.55; color: var(--ink-2); }
 .stage-error .text-btn { margin-top: 18px; }
 
 /* ---------- chat terminal ---------- */

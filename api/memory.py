@@ -150,6 +150,13 @@ class SupermemoryRetriever:
         self.namespace = namespace
         self.threshold, self.margin = threshold, margin
 
+    def warm(self) -> None:
+        """Open the connection ahead of the first question (the first request pays for the TLS handshake)."""
+        try:
+            self.client.post(f"/ns/{self.namespace}/search", json={"query": "warm up", "limit": 1, "searchMode": "chunks"})
+        except Exception:
+            pass
+
     def search(self, query: str, limit: int) -> list[Passage]:
         r = self.client.post(f"/ns/{self.namespace}/search",
                              json={"query": query, "limit": limit * 3, "searchMode": "chunks", "threshold": 0,

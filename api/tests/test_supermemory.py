@@ -44,3 +44,17 @@ def test_hand_added_documents_are_named_by_their_title():
             "included": {"document": {"id": "3cZcq6bVez", "title": "---\ntitle: Robotics club notes\n---\nTrey leads"}}}]})
     r = SupermemoryRetriever("k", "https://api.supermemory.ai", "trey-lm", transport=httpx.MockTransport(handler))
     assert [p.file for p in r.search("clubs", 4)] == ["Robotics club notes"]
+
+
+def test_warm_opens_the_connection_and_never_raises():
+    calls = []
+
+    def handler(request):
+        calls.append(request.url.path)
+        return httpx.Response(200, json={"results": []})
+    SupermemoryRetriever("k", "https://api.supermemory.ai", "trey-lm", transport=httpx.MockTransport(handler)).warm()
+    assert calls == ["/ns/trey-lm/search"]
+
+    def broken(request):
+        raise httpx.ConnectError("offline")
+    SupermemoryRetriever("k", "https://api.supermemory.ai", "trey-lm", transport=httpx.MockTransport(broken)).warm()

@@ -359,9 +359,14 @@ export function startHome() {
       draw = () => {
         if (view === 'error') {
           const e = L.s.error;
-          setHead('error', L.s, e?.code === 'rate_limited' ? ['Time for a short break', ''] : ['The answer stopped', '']);
+          const limited = e?.code === 'rate_limited';
+          const [head, title] = !limited ? ['The answer stopped', 'No answer this time']
+            : e?.reason === 'global_day' ? ['The model is resting for today', 'Daily limit reached for the site']
+            : e?.reason === 'ip_day' ? ['That’s all for today', 'You’ve reached today’s limit']
+            : ['Time for a short break', 'Too many questions for now'];
+          setHead('error', L.s, [head, '']);
           showDoneToggle(false);
-          V.renderError(body, e?.code === 'rate_limited' ? 'Too many questions for now' : 'No answer this time', e?.message || 'Something went wrong.', player ? { label: 'Watch the replay', name: 'replay' } : undefined);
+          V.renderError(body, title, e?.message || 'Something went wrong.', player ? { label: 'Watch a recorded answer', name: 'replay' } : undefined);
           return;
         }
         setHead(view, L.s, undefined, idx);

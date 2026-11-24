@@ -65,6 +65,30 @@ class LeakGuard:
         return False
 
 
+def wait_text(seconds: int) -> str:
+    """A friendly length of time: "less than a minute", "7 minutes", "about 5 hours"."""
+    if seconds < 60:
+        return "less than a minute"
+    minutes = round(seconds / 60)
+    if minutes < 90:
+        return f"{minutes} minute{'s' if minutes != 1 else ''}"
+    hours = round(seconds / 3600)
+    return f"about {hours} hour{'s' if hours != 1 else ''}"
+
+
+def limit_message(reason: str, retry_after: int, settings: Settings) -> str:
+    """Why the visitor was stopped, and when they can ask again."""
+    wait = wait_text(retry_after)
+    if reason == "window":
+        return (f"You've asked {settings.rate_window_max} questions in the last {settings.rate_window_s // 60} minutes, "
+                f"which is the most allowed. You can ask again in {wait}.")
+    if reason == "ip_day":
+        return (f"You've reached today's limit of {settings.rate_day_max_ip} questions. "
+                f"It resets at midnight UTC, in {wait}.")
+    return ("The site has answered as many questions as it can today, which keeps it free to run. "
+            f"Questions open again at midnight UTC, in {wait}. The recorded answers still work in the meantime.")
+
+
 def sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False, separators=(',', ':'))}\n\n"
 
@@ -126,12 +150,21 @@ def create_app(*, settings: Settings, tokenizer, worker: Worker, retriever: Retr
     is_enabled = chat_enabled or (lambda: settings.chat_enabled)
     get_error = worker_error or (lambda: getattr(worker, "error", None))
 
+    def warm_retriever() -> None:
+        # The page calls /api/warm on load, so the notes search is ready before the visitor finishes typing.
+        if hasattr(retriever, "warm"):
+            threading.Thread(target=retriever.warm, daemon=True).start()
+
+    warm_retriever()  # and once when the server starts
+
     def client_ip(request: Request) -> str:
         # Deliberately ignores X-Forwarded-For: a visitor can set that header to anything (test I7).
         return request.client.host if request.client else "unknown"
 
-    def error(status: int, code: str, message: str, retry_after: int | None = None) -> JSONResponse:
+    def error(status: int, code: str, message: str, retry_after: int | None = None, reason: str | None = None) -> JSONResponse:
         body = {"code": code, "message": message}
+        if reason:
+            body["reason"] = reason
         headers = {}
         if retry_after is not None:
             body["retry_after"] = retry_after
@@ -150,6 +183,7 @@ def create_app(*, settings: Settings, tokenizer, worker: Worker, retriever: Retr
             return error(429, "rate_limited", "Too many warm-up requests.", d.retry_after)
         if is_enabled():
             worker.warm()
+            warm_retriever()
         return {"ok": True, "gpu_ready": worker.is_ready()}
 
     @app.get("/api/tokenize")
@@ -182,8 +216,7 @@ def create_app(*, settings: Settings, tokenizer, worker: Worker, retriever: Retr
             return error(503, "chat_disabled", "The chat is turned off right now. Here's a recorded answer instead.")
         d = limiter.check_chat(client_ip(request))
         if not d.ok:
-            minutes = max(1, round(d.retry_after / 60))
-            return error(429, "rate_limited", f"You've asked a lot of questions. Try again in {minutes} minutes.", d.retry_after)
+            return error(429, "rate_limited", limit_message(d.reason, d.retry_after, settings), d.retry_after, d.reason)
         seed = body.get("seed") if isinstance(body.get("seed"), int) else None
         return StreamingResponse(_answer(q, seed), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

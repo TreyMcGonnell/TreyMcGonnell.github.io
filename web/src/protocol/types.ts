@@ -24,7 +24,11 @@ export interface TokenFrame {
 }
 export interface Done { tokens: number; ms: number; sources: { src: Source; share: number }[] }
 export type ErrorCode = 'rate_limited' | 'chat_disabled' | 'model_error' | 'bad_input' | 'busy' | 'blocked';
-export interface StreamError { code: ErrorCode; message: string; retry_after?: number }
+export interface StreamError {
+  code: ErrorCode; message: string; retry_after?: number;
+  /** for rate limits: 'window' (10 in 10 min), 'ip_day' (this visitor's daily cap), 'global_day' (the site's daily cap) */
+  reason?: string;
+}
 
 export type StreamEvent =
   | { event: 'meta'; data: Meta; t?: number }

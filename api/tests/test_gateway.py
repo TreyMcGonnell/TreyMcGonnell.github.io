@@ -97,6 +97,8 @@ def test_a5_eleventh_question_in_ten_minutes_is_refused(make_app, clock):
             assert ask(c)[0].status_code == 200
         r, _ = ask(c)
         assert r.status_code == 429 and r.json()["code"] == "rate_limited" and r.json()["retry_after"] > 0
+        assert r.json()["reason"] == "window" and "10 questions in the last 10 minutes" in r.json()["message"]
+        assert r.headers["Retry-After"] == str(r.json()["retry_after"])
         clock.t += 601
         assert ask(c)[0].status_code == 200
 
@@ -257,3 +259,14 @@ def test_health_reports_version_and_schema(make_app):
     with TestClient(app) as c:
         h = c.get("/api/health").json()
     assert h["schema_v"] == 1 and h["version"] and h["chat_enabled"] is True
+
+
+def test_a5_each_limit_says_why_and_when():
+    from api.config import Settings
+    from api.gateway import limit_message, wait_text
+
+    s = Settings()
+    assert wait_text(30) == "less than a minute" and wait_text(420) == "7 minutes" and wait_text(5 * 3600) == "about 5 hours"
+    assert "10 questions in the last 10 minutes" in limit_message("window", 420, s) and "7 minutes" in limit_message("window", 420, s)
+    assert "today's limit of 60 questions" in limit_message("ip_day", 5 * 3600, s)
+    assert "answered as many questions as it can today" in limit_message("global_day", 3600, s)
