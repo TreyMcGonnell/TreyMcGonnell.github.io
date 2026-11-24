@@ -17,7 +17,7 @@
 My portfolio site. Instead of a page that tells you what I can do, it has a small language model that
 answers questions about me, and it shows you how that model picks every word while it answers.
 
-**Site:** treymcgonnell.github.io (launching soon) · Data science at Northern Kentucky University
+**Site:** [treymcgonnell.github.io](https://treymcgonnell.github.io) · Data science at Northern Kentucky University
 
 ---
 
@@ -119,7 +119,7 @@ design/    the skyline generator and design tools
 - [x] API live on Modal, notes in Supermemory
 - [x] Swap the sample content for my real bio, projects and resume
 - [x] Re-record the replay with the real notes
-- [ ] Upload the notes to Supermemory and launch
+- [x] Upload the notes to Supermemory and launch
 - [ ] Later: fine-tune the model's voice, and better neuron labels
 
 ---
