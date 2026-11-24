@@ -1,0 +1,1 @@
+import{e as s,c as r}from"./fonts-CtErnX1Z.js";s();const n=document.querySelector("#scene");if(n){const a=r(n,{animate:!1,ready:!0,maxDpr:1.5,onLite:()=>document.body.classList.add("lite")}),e=()=>a.renderAt(30,1,!0);e();let t=0;addEventListener("resize",()=>{clearTimeout(t),t=window.setTimeout(e,200)})}
