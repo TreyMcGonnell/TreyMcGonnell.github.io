@@ -47,6 +47,14 @@ class Settings:
     rate_day_max_ip: int = 60
     rate_day_max_global: int = 400
     warm_per_minute: int = 6
+    # Temporary allowance while the site is new and people on shared networks (campus Wi-Fi, offices) try it:
+    # up to 100 questions an hour per address until the end of Nov 30 Eastern. After that the limits above apply again.
+    # Set PROMO_UNTIL="" to end it early, or to another ISO time to move it.
+    promo_until: str = "2026-12-01T05:00:00+00:00"
+    promo_window_s: int = 3600
+    promo_window_max: int = 100
+    promo_day_max_ip: int = 400
+    promo_warm_per_minute: int = 60
 
     # retrieval
     retrieval_timeout_s: float = 1.5
@@ -84,6 +92,7 @@ class Settings:
             rate_window_max=_int("RATE_WINDOW_MAX", base.rate_window_max),
             rate_day_max_ip=_int("RATE_DAY_MAX_IP", base.rate_day_max_ip),
             rate_day_max_global=_int("RATE_DAY_MAX_GLOBAL", base.rate_day_max_global),
+            promo_until=os.environ.get("PROMO_UNTIL", base.promo_until),
             supermemory_api_key=os.environ.get("SUPERMEMORY_API_KEY", ""),
             supermemory_base_url=os.environ.get("SUPERMEMORY_BASE_URL", base.supermemory_base_url),
             supermemory_container=os.environ.get("SUPERMEMORY_CONTAINER", base.supermemory_container),

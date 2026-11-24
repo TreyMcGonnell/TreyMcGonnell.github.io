@@ -76,14 +76,18 @@ def wait_text(seconds: int) -> str:
     return f"about {hours} hour{'s' if hours != 1 else ''}"
 
 
-def limit_message(reason: str, retry_after: int, settings: Settings) -> str:
+def span_text(seconds: int) -> str:
+    return "hour" if seconds == 3600 else f"{seconds // 60} minutes"
+
+
+def limit_message(reason: str, retry_after: int, limit: int, window_s: int = 0) -> str:
     """Why the visitor was stopped, and when they can ask again."""
     wait = wait_text(retry_after)
     if reason == "window":
-        return (f"You've asked {settings.rate_window_max} questions in the last {settings.rate_window_s // 60} minutes, "
+        return (f"You've asked {limit} questions in the last {span_text(window_s)}, "
                 f"which is the most allowed. You can ask again in {wait}.")
     if reason == "ip_day":
-        return (f"You've reached today's limit of {settings.rate_day_max_ip} questions. "
+        return (f"You've reached today's limit of {limit} questions. "
                 f"It resets at midnight UTC, in {wait}.")
     return ("The site has answered as many questions as it can today, which keeps it free to run. "
             f"Questions open again at midnight UTC, in {wait}. The recorded answers still work in the meantime.")
@@ -216,7 +220,7 @@ def create_app(*, settings: Settings, tokenizer, worker: Worker, retriever: Retr
             return error(503, "chat_disabled", "The chat is turned off right now. Here's a recorded answer instead.")
         d = limiter.check_chat(client_ip(request))
         if not d.ok:
-            return error(429, "rate_limited", limit_message(d.reason, d.retry_after, settings), d.retry_after, d.reason)
+            return error(429, "rate_limited", limit_message(d.reason, d.retry_after, d.limit, d.window_s), d.retry_after, d.reason)
         seed = body.get("seed") if isinstance(body.get("seed"), int) else None
         return StreamingResponse(_answer(q, seed), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

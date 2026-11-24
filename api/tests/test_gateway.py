@@ -262,11 +262,37 @@ def test_health_reports_version_and_schema(make_app):
 
 
 def test_a5_each_limit_says_why_and_when():
-    from api.config import Settings
     from api.gateway import limit_message, wait_text
 
-    s = Settings()
     assert wait_text(30) == "less than a minute" and wait_text(420) == "7 minutes" and wait_text(5 * 3600) == "about 5 hours"
-    assert "10 questions in the last 10 minutes" in limit_message("window", 420, s) and "7 minutes" in limit_message("window", 420, s)
-    assert "today's limit of 60 questions" in limit_message("ip_day", 5 * 3600, s)
-    assert "answered as many questions as it can today" in limit_message("global_day", 3600, s)
+    assert "10 questions in the last 10 minutes" in limit_message("window", 420, 10, 600) and "7 minutes" in limit_message("window", 420, 10, 600)
+    assert "100 questions in the last hour" in limit_message("window", 420, 100, 3600)
+    assert "today's limit of 60 questions" in limit_message("ip_day", 5 * 3600, 60)
+    assert "answered as many questions as it can today" in limit_message("global_day", 3600, 400)
+
+
+def test_a5_temporary_allowance_runs_until_its_date_then_ends_on_its_own(clock):
+    from api.ratelimit import Promo
+
+    until = clock.t + 7 * 86400
+    lim = RateLimiter(MemoryStore(), salt="s", window_s=600, window_max=10, day_max_ip=60, day_max_global=1000,
+                      warm_per_minute=6, clock=clock, promo=Promo(until, 3600, 100, 400, 60))
+    assert all(lim.check_chat("10.0.0.1").ok for _ in range(100))  # 100 in an hour from one address
+    d = lim.check_chat("10.0.0.1")
+    assert not d.ok and d.reason == "window" and d.limit == 100 and d.window_s == 3600
+    clock.t = until + 86400  # after the end date
+    assert all(lim.check_chat("10.0.0.2").ok for _ in range(10))
+    d = lim.check_chat("10.0.0.2")
+    assert not d.ok and d.limit == 10 and d.window_s == 600
+
+
+def test_production_settings_include_the_allowance_until_december_first():
+    from datetime import datetime
+
+    from api.config import Settings
+    from api.ratelimit import limiter_from_settings
+
+    lim = limiter_from_settings(MemoryStore(), Settings())
+    assert lim.promo is not None and datetime.fromtimestamp(lim.promo.until).isoformat() >= "2026-11-30"
+    assert lim.limits(datetime.fromisoformat("2026-11-25T12:00:00+00:00").timestamp())[:2] == (3600, 100)
+    assert lim.limits(datetime.fromisoformat("2026-12-01T06:00:00+00:00").timestamp())[:2] == (600, 10)

@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from api.config import Settings  # noqa: E402
 from api.fakes import FakeTokenizer, FakeWorker  # noqa: E402
 from api.gateway import create_app  # noqa: E402
-from api.ratelimit import MemoryStore, RateLimiter  # noqa: E402
+from api.ratelimit import MemoryStore, limiter_from_settings  # noqa: E402
 
 
 class Clock:
@@ -33,16 +33,14 @@ class Clock:
 def build(settings: Settings, clock=None):
     tok = FakeTokenizer()
     worker = FakeWorker(tok)
-    limiter = RateLimiter(MemoryStore(), salt="simulation", window_s=settings.rate_window_s, window_max=settings.rate_window_max,
-                          day_max_ip=settings.rate_day_max_ip, day_max_global=settings.rate_day_max_global,
-                          warm_per_minute=settings.warm_per_minute, **({"clock": clock} if clock else {}))
+    limiter = limiter_from_settings(MemoryStore(), settings, salt="simulation", **({"clock": clock} if clock else {}))
     return create_app(settings=settings, tokenizer=tok, worker=worker, retriever=None, limiter=limiter,
                       bio="Simulation bio.", meta=worker.meta(settings.temperature))
 
 
 def simulate() -> bool:
     s = Settings()
-    clock = Clock(1_795_000_000.0)  # a fixed moment, mid-day UTC
+    clock = Clock(1_796_385_600.0)  # 2026-12-04, mid-day UTC: after the temporary allowance, so the normal limits apply
     app = build(s, clock)
     visitors: dict[str, TestClient] = {}
 
@@ -92,6 +90,31 @@ def simulate() -> bool:
 
     clock.t += 86_400
     check("Visitor A the next day", ask(a), 200)
+
+    # The temporary allowance: a shared campus network before the end of Nov 30 (Eastern), then normal limits again.
+    from datetime import datetime
+
+    clock2 = Clock(datetime.fromisoformat("2026-11-25T15:00:00+00:00").timestamp())
+    app2 = build(s, clock2)
+    campus = TestClient(app2, client=("192.0.2.200", 50000))
+
+    def ask_campus():
+        r = campus.post("/api/chat", json={"q": "What is Trey studying?"})
+        if r.status_code == 200:
+            r.read()
+        return r
+
+    answered = 0
+    for _ in range(s.promo_window_max):
+        answered += ask_campus().status_code == 200
+        clock2.t += 30  # a question every 30 seconds from the same network
+    check(f"Shared campus network, Nov 25: {answered} questions in under an hour", campus.get("/api/health"), 200)
+    ok &= answered == s.promo_window_max
+    check(f"Shared campus network, question {s.promo_window_max + 1} within the hour", ask_campus(), 429, "window")
+    clock2.t = datetime.fromisoformat(s.promo_until).timestamp() + 3600  # Dec 1, after the cutoff
+    for _ in range(s.rate_window_max):
+        assert ask_campus().status_code == 200
+    check(f"Same network on Dec 1, question {s.rate_window_max + 1} in 10 minutes", ask_campus(), 429, "window")
 
     width = max(len(r[1]) for r in results)
     for res, name, status, message, retry in results:

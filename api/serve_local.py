@@ -19,7 +19,7 @@ from .config import Settings, lens_layers
 from .gateway import create_app
 from .local import make_retriever, model_path, read_bio, resolve
 from .qalog import QALog
-from .ratelimit import MemoryStore, RateLimiter
+from .ratelimit import MemoryStore, limiter_from_settings
 from .worker import LocalWorker
 
 
@@ -38,9 +38,7 @@ def build_app(settings: Settings | None = None):
         embed = np.load(data_dir / "embed_preview.npy")
         scale = float(json.loads((data_dir / "embed_preview.json").read_text())["scale"])
     worker = LocalWorker(path, str(data_dir), settings, tokenizer=tokenizer)
-    limiter = RateLimiter(MemoryStore(), salt=settings.log_salt, window_s=settings.rate_window_s,
-                          window_max=settings.rate_window_max, day_max_ip=settings.rate_day_max_ip,
-                          day_max_global=settings.rate_day_max_global, warm_per_minute=settings.warm_per_minute)
+    limiter = limiter_from_settings(MemoryStore(), settings)
     app = create_app(settings=settings, tokenizer=tokenizer, worker=worker, retriever=make_retriever(settings),
                      limiter=limiter, bio=read_bio(settings), meta=meta, embed_preview=embed, embed_scale=scale,
                      qa_log=QALog(resolve(settings.log_path), settings.log_retention_days),

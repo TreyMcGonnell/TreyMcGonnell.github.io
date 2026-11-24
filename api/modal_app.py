@@ -184,7 +184,7 @@ def gateway():
     from api.gateway import create_app
     from api.local import make_retriever, read_bio
     from api.qalog import QALog
-    from api.ratelimit import RateLimiter
+    from api.ratelimit import limiter_from_settings
 
     settings = replace(Settings.from_env(), content_dir="/content", data_dir="/data", log_path="/models/logs/qa-log.jsonl")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
@@ -196,9 +196,7 @@ def gateway():
     if Path("/data/embed_preview.npy").exists():
         embed = np.load("/data/embed_preview.npy")
         scale = float(json.loads(Path("/data/embed_preview.json").read_text())["scale"])
-    limiter = RateLimiter(ModalDictStore(), salt=os.environ.get("LOG_SALT", settings.log_salt), window_s=settings.rate_window_s,
-                          window_max=settings.rate_window_max, day_max_ip=settings.rate_day_max_ip,
-                          day_max_global=settings.rate_day_max_global, warm_per_minute=settings.warm_per_minute)
+    limiter = limiter_from_settings(ModalDictStore(), settings, salt=os.environ.get("LOG_SALT", settings.log_salt))
     return create_app(settings=settings, tokenizer=tokenizer, worker=RemoteWorker(settings), retriever=make_retriever(settings),
                       limiter=limiter, bio=read_bio(settings), meta=meta, embed_preview=embed, embed_scale=scale,
                       qa_log=QALog(settings.log_path, settings.log_retention_days),
